@@ -164,29 +164,20 @@ export default class CodeFlask {
   }
 
   handleSelfClosingCharacters(e) {
-    const openChars = ['(', '[', '{', '<'];
+    const openChars = {'(': ')', '[': ']', '{': '}', '<': '>'};
     const key = e.key;
 
-    if (!openChars.includes(key)) {
+    const close = openChars[key];
+
+    if (!close) {
       return;
     }
 
-    switch(key) {
-      case '(':
-      this.closeCharacter(')');
-      break;
-
-      case '[':
-      this.closeCharacter(']');
-      break;
-
-      case '{':
-      this.closeCharacter('}');
-      break;
-
-      case '<':
-      this.closeCharacter('>');
-      break;
+    if (this.elTextarea.selectionStart !== this.elTextarea.selectionEnd) {
+      this.surround(key, close);
+      e.preventDefault();
+    } else {
+      this.closeCharacter(close);
     }
   }
 
@@ -254,13 +245,35 @@ export default class CodeFlask {
     // }
   }
 
-  closeCharacter(closeChar) {
+  surround(openChar, closeChar) {
     const selectionStart = this.elTextarea.selectionStart;
     const selectionEnd = this.elTextarea.selectionEnd;
-    const newCode = `${this.code.substring(0, selectionStart)}${closeChar}${this.code.substring(selectionEnd)}`;
+
+    const leading = this.code.substring(0, selectionStart);
+    const between = this.code.substring(selectionStart, selectionEnd);
+    const trailing = this.code.substring(selectionEnd);
+
+    const newCode = `${leading}${openChar}${between}${closeChar}${trailing}`;
 
     this.updateCode(newCode);
-    this.elTextarea.selectionEnd = selectionEnd;
+    this.elTextarea.selectionStart = leading.length + 1;
+    this.elTextarea.selectionEnd = leading.length + between.length + 1;
+  }
+
+  closeCharacter(closeChar) {
+    // start === end here
+    const pos = this.elTextarea.selectionStart;
+
+    const nextChar = this.code.substring(pos, pos + 1).trim();
+
+    if (nextChar && /\w/.test(nextChar)) {
+      return;
+    }
+
+    const newCode = `${this.code.substring(0, pos)}${closeChar}${this.code.substring(pos)}`;
+
+    this.updateCode(newCode);
+    this.elTextarea.selectionEnd = pos;
   }
 
   updateCode(newCode) {
